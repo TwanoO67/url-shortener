@@ -7,25 +7,51 @@
 	//variable intermediaire
 	$lien = "";
 	$message = "";
-	$shortlink = "$_SERVER[REQUEST_URI]";
+	$shortlink = str_replace('/', '',"$_SERVER[REQUEST_URI]");
 	
 	//verification du contenu
 	$file_links = file_get_contents($filename);
 	$links = ($file_links)? json_decode($file_links,true) : [];
 	if($links[$shortlink]){
 		$lien = $links[$shortlink];
+		header('Location: '.$lien);
 	}
 	
 	//mode d'ajout
 	if($_POST['mode'] == 'add'){
 		if( !$protected || $_POST['pwd'] === $password ){
-			if( !isset( $links[$_POST['shortlink']]) && $_POST['shortlink'] !== '/' ){
-				//ajout du lien
-				$links[$_POST['shortlink']] = $_POST['link'];
-				//sauvegarde
-				file_put_contents($filename, json_encode($links, JSON_PRETTY_PRINT));
-				$message = " Ok, votre lien a été créer <a href='".$domain.$_POST['shortlink']."'>".$domain.$_POST['shortlink']."</a> ";			}
-			else{
+			
+			$wanted = str_replace('/', '', $_POST['shortlink'] );
+			$real = $_POST['link'];
+			if($wanted === '' ){
+				$message = " Le shortlink voulu n'est pas valide ! ";
+			}
+			elseif( strpos($real, 'http') !== 0 ){
+				$message = " Le lien voulu doit etre complet (avec http) ! ";
+			}
+			elseif( !isset( $links[$wanted]) ){
+				//test la validité du lien
+				$ch = curl_init();
+				curl_setopt($ch, CURLOPT_URL, $real);
+				curl_setopt($ch,  CURLOPT_RETURNTRANSFER, TRUE);
+				$response = curl_exec($ch);
+				$response_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+				curl_close($ch);
+				if(intval($response_status) < 200 || intval($response_status) > 310)
+				{
+					$message = " Erreur, Le lien pointe vers nul part ! ".$response_status;
+				}
+				else{
+					//ajout du lien
+					$links[$wanted] = $real;
+					//sauvegarde
+					file_put_contents($filename, json_encode($links, JSON_PRETTY_PRINT));
+					$message = " Ok, votre lien a été créée <a href='".$domain.'/'.$wanted."'>".$domain.'/'.$wanted."</a> ".$response_status;
+				}
+
+			}
+			else
+			{
 				$message = " Erreur, Le lien existe déjà ! ";
 			}
 		}
@@ -82,7 +108,7 @@
 				<p> 
 					<?php 
 					//cas particulier pour la home
-					if( $shortlink === "/" ){ 
+					if( $shortlink === "" ){ 
 						echo "Voulez-vous créer un lien réduit ? <br/>";
 						$shortlink = getUniqueId(); 
 					}
@@ -96,7 +122,7 @@
 				<input type="password" placeholder="Mot de passe" name="pwd" required><br/>
 				<?php } ?>
 				 
-				<input type='text' name="shortlink" value='<?php echo $shortlink; ?>'></input><br/>
+				<input type='text' placeholder="Lien raccourci" name="shortlink" value='<?php echo $shortlink; ?>'></input><br/>
 				<input type='hidden' name="mode" value='add'></input>
 		  	    <input type="text" placeholder="Lien complet... http://..." name="link" required>
 			    <button type="submit">Ajouter</button>
