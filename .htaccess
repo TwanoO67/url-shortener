@@ -1,0 +1,3 @@
+#Le serveur suit les liens symboliques :Options +FollowSymlinks
+#Activation du module de réécriture :RewriteEngine On# ---- Règles de réécriture ----#      --------------------
+RewriteRule (.*)$ index.php?lien=$0 [QSA,L]
