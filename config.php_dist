@@ -1,0 +1,9 @@
+<?php
+	//CONFIGURATION
+	$titre = "Les Photos de";
+	$domain = "http://les-photos.de";
+	$filename = "mylinks.json";
+	
+	$protected = true;
+	$password="changeThatToProtect";
+?>
